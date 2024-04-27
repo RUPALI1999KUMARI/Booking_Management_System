@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Signup and Login</title>
+    <!-- <script src="https://cdn.socket.io/4.5.3/socket.io.js"></script> -->
+    <!-- <script src="/socket.io/socket.io.js"></script> -->
+    <script src = "/socket.io/socket.io.js"></script>
+    <style>
+
+        .alert {
+          padding: 15px;
+          /* background-color: #9b7700; */
+          color: white;
+          opacity: 1;
+          transition: opacity 0.6s;
+          position: fixed;
+          bottom: 15px;
+          right: 15px;
+          z-index: 9999;
+        }
+      
+        .fade-out {
+          opacity: 0;
+        }
+      </style>
+    <div id="alertBox" class="alert">
+   
+  </div>
+  
+  <script>
+    function showAlert(text, color) {
+      var alertBox = document.getElementById("alertBox");
+      alertBox.style.display = "block";
+      alertBox.innerHTML = text;
+      alertBox.style.backgroundColor = color;
+      setTimeout(function() {
+        alertBox.classList.add("fade-out");
+        setTimeout(function() {
+          alertBox.style.display = "none";
+          alertBox.classList.remove("fade-out");
+        }, 600); 
+      }, 5000);
+    }
+  
+  </script>
+    <script>
+        
+        const socket = io();
+
+        socket.on('connect', () => {
+            console.log('Connected to Socket.io server');
+        });
+
+        socket.on('disconnect', () => {
+            console.log('Disconnected from Socket.io server');
+        });
+        socket.on('bookingCreated', (data) => {
+            console.log('New booking created:', data);
+            showAlert('New Booking Added: ' + data.description, 'green')
+            fetchAllBookings()
+        });
+
+        socket.on('bookingUpdated', (data) => {
+            console.log('Booking updated:', data);
+            console.log('New booking created:', data);
+            showAlert('Booking Updated: ' + data.description, '#9b7700')
+            fetchAllBookings()
+        });
+
+        socket.on('bookingDeleted', (data) => {
+            console.log('Booking updated:', data);
+            console.log('New booking created:', data);
+            showAlert('Booking Deleted: ' + data.description, 'red')
+            fetchAllBookings()
+        });
+
+        async function signup(event) {
+            event.preventDefault();
+            const form = event.target;
+            const username = form.username.value;
+            const password = form.password.value;
+
+            const response = await fetch('http://localhost:3000/users/signup', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, password })
+            });
+
+            const data = await response.json();
+            document.getElementById('signupResult').innerText = data.message;
+        }
+
+        async function login(event) {
+            event.preventDefault();
+            const form = event.target;
+            const username = form.username.value;
+            const password = form.password.value;
+
+            const response = await fetch('http://localhost:3000/users/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, password })
+            });
+            
+            const data = await response.json();
+            document.getElementById('loginResult').innerText = data.message;
+            document.getElementById('token').setAttribute('data-token', data.token);
+        }
+        
+
+        async function fetchAllBookings() {
+            const token = document.getElementById('token').getAttribute('data-token');
+            console.log({ token });
+
+            const response = await fetch('http://localhost:3000/bookings', {
+                method: 'GET',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'authorization': 'Bearer ' + token
+                }
+            });
+
+            const data = await response.json();
+            const bookingsTable = document.getElementById('bookingsTable');
+            bookingsTable.innerHTML = ''; 
+            const headerRow = `
+                <tr>
+                    <th>ID</th>
+                    <th>User ID</th>
+                    <th>Booking Date</th>
+                    <th>Description</th>
+                </tr>
+            `;
+            bookingsTable.innerHTML += headerRow;
+
+            data.bookings.forEach(booking => {
+                const row = `
+                    <tr>
+                        <td>${booking.id}</td>
+                        <td>${booking.user_id}</td>
+                        <td>${new Date(booking.booking_date).toLocaleString()}</td>
+                        <td>${booking.description || 'N/A'}</td>
+                    </tr>
+                `;
+                bookingsTable.innerHTML += row;
+            });
+        }
+
+        
+    </script>
+</head>
+<body>
+    <h1>Signup and Login</h1>
+
+    <form onsubmit="signup(event)">
+        <h2>Signup</h2>
+        <label for="signup-username">Username:</label>
+        <input type="text" name="username" id="signup-username" required />
+        <br />
+        <label for="signup-password">Password:</label>
+        <input type="password" name="password" id="signup-password" required />
+        <br />
+        <button type="submit">Signup</button>
+        <p id="signupResult"></p>
+    </form>
+
+    <form onsubmit="login(event)">
+        <h2>Login</h2>
+        <label for="login-username">Username:</label>
+        <input type="text" name="username" id="login-username" required />
+        <br />
+        <label for="login-password">Password:</label>
+        <input type="password" name="password" id="login-password" required />
+        <br />
+        <button type="submit">Login</button>
+        <p id="loginResult"></p>
+        <p id="token" data-token></p>
+    </form>
+
+    <button onclick="fetchAllBookings()">Fetch All Booking</button>
+
+    <h1>All Bookings</h1>
+
+    <table id="bookingsTable" border="1" style="width: 100%;">
+    </table>
+</body>
+</html>

@@ -31,6 +31,7 @@ const createBooking = async (req, res) => {
   try {
     req.body.user_id = req.user.dataValues.id;
     const booking = await Booking.create(req.body);
+    req.io.emit('bookingCreated', booking);
     res.status(201).json(booking);
   } catch (error) {
     res.status(500).json({ error: 'Error creating booking' });
@@ -45,6 +46,8 @@ const updateBooking = async (req, res) => {
     }
     req.body.user_id = req.user.dataValues.id;
     await booking.update(req.body);
+    req.io.emit('bookingUpdated', booking);
+
     res.json(booking);
   } catch (error) {
     res.status(500).json({ error: 'Error updating booking' });
@@ -58,6 +61,7 @@ const deleteBooking = async (req, res) => {
       return res.status(404).json({ error: 'Booking not found' });
     }
     await booking.destroy();
+    req.io.emit('bookingDeleted', booking);
     res.json({ message: 'Booking deleted' });
   } catch (error) {
     res.status(500).json({ error: 'Error deleting booking' });
